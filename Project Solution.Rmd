@@ -43,8 +43,8 @@ skim(housing)
 We used the skim() function so we could see all parts of the housing data. This allowed use to see if any of the data was missing. None of the data seemed to be missing: however, we did notice that two variables, status and elem, were charactors. These needed to be changed to numeric for data analysis.
 
 ```{r}
-housing$elem <- as.numeric(c("edison" = "1", "adams" = "2", "parker" = "3", "edge" = "4", "harris" = 5, "crest" = 6)[housing$elem])
-housing$status <- as.numeric(c("sld" = "1", "pen" = "2", "act" = "3")[housing$status])
+housing$elem <- as.numeric(c("edison" = 0, "adams" = 1, "parker" = 2, "edge" = 3, "harris" = 4, "crest" = 5)[housing$elem])
+housing$status <- as.numeric(c("sld" = 0, "pen" = 1, "act" = 2)[housing$status])
 
 ```
 
