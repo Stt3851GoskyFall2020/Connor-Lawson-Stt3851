@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(moderndive)
 library(resampledata)
 library(knitr)
 library(dplyr)
@@ -16,6 +17,7 @@ library(utils)
 library(ISLR)
 library(readxl)
 library(MASS)
+library(car)
 ```
 
 
@@ -24,4 +26,120 @@ library(MASS)
 housing <- read_excel("Housing.xlsx")
 head(housing)
 ```
+
+#Data Summary
+
+```{r}
+v <- view(housing)
+v
+```
+Used the view command to look at all of the raw values in the housing data set.
+
+
+```{r}
+skim(housing)
+```
+
+We used the skim() function so we could see all parts of the housing data. This allowed use to see if any of the data was missing. None of the data seemed to be missing: however, we did notice that two variables, status and elem, were charactors. These needed to be changed to numeric for data analysis.
+
+```{r}
+housing$elem <- as.numeric(c("edison" = "1", "adams" = "2", "parker" = "3", "edge" = "4", "harris" = 5, "crest" = 6)[housing$elem])
+housing$status <- as.numeric(c("sld" = "1", "pen" = "2", "act" = "3")[housing$status])
+
+```
+
+The two variables "elem" and "status" were modified by making them numeric so they could be used in the exploraory data analysis.
+
+
+```{r}
+sapply(housing, class)
+```
+Sapply was used to make sure that the factor variables were changed to numeric.
+
+#Exploratory Data Analysis
+
+```{r}
+cor(housing)
+```
+
+The cor() function was used to look at the corelation values for price, so that we can see which varibles will be significant in creating a model. Out of all the varibables garagesize, bedrooms, lot, size and status.
+
+```{r}
+ggplot(data = housing, aes(size, price, color = elem)) + geom_point() + geom_jitter()
+```
+
+```{r}
+ggplot(data = housing, aes(lot, price, color = elem)) + geom_point() + geom_jitter()
+```
+comment
+
+```{r}
+ggplot(data = housing, aes(garagesize, price, color = elem)) + geom_point() + geom_jitter()
+```
+
+```{r}
+ggplot(data = housing, aes(bedrooms, price, color = elem)) + geom_point() + geom_jitter()
+```
+
+```{r}
+ggplot(data = housing, aes(status, price, color = elem)) + geom_point() + geom_jitter()
+```
+comment
+
+#Intitial Modeling
+
+```{r}
+house_model = lm(price ~ garagesize, data = housing)
+summary(house_model)
+```
+
+```{r}
+plot(house_model)
+```
+
+#Model Modification
+```{r}
+house_model2 = lm(price ~ garagesize + size + bedrooms + I(bedrooms^2), data = housing)
+summary(house_model2)
+```
+
+```{r}
+plot(house_model2)
+```
+
+
+#Conclusions
+
+$$price = 316.278 + 16.965 * garagesize + 67.340 * size - 86.280 * bedrooms  + 8.671 * bedrooms ^ 2$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
