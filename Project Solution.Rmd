@@ -1,8 +1,11 @@
 ---
-title: "Solution"
-author: "Connor Lawson"
-date: "3/23/2020"
-output: html_document
+title: "Project One"
+author: "Connor Lawson - Darrious Barger"
+date: '`r format(Sys.time(), "%b %d, %Y at %X")`'
+output:
+  bookdown::html_document2:
+    highlight: textmate
+    theme: paper
 ---
 
 ```{r setup, include=FALSE}
@@ -22,7 +25,7 @@ library(car)
 
 
 
-```{r}
+```{r, include = FALSE}
 housing <- read_excel("Housing.xlsx")
 head(housing)
 ```
@@ -30,98 +33,228 @@ head(housing)
 #Data Summary
 
 ```{r}
-v <- view(housing)
-v
+#view(housing)
 ```
-Used the view command to look at all of the raw values in the housing data set.
+
+Using the `view()` command, we can look at all of the raw values in the `Housing` data set.
 
 
 ```{r}
 skim(housing)
 ```
 
-We used the skim() function so we could see all parts of the housing data. This allowed use to see if any of the data was missing. None of the data seemed to be missing: however, we did notice that two variables, status and elem, were charactors. These needed to be changed to numeric for data analysis.
-
 ```{r}
+housingOld <- housing
 housing$elem <- as.numeric(c("edison" = 0, "adams" = 1, "parker" = 2, "edge" = 3, "harris" = 4, "crest" = 5)[housing$elem])
 housing$status <- as.numeric(c("sld" = 0, "pen" = 1, "act" = 2)[housing$status])
 
 ```
 
-The two variables "elem" and "status" were modified by making them numeric so they could be used in the exploraory data analysis.
+The `skim()` function lets us analyze the `housing` data set. We can see if any of the data is missing. None of the data seemed to be missing. We did notice that two variables, `status` and `elem`, were characters. We changed them to numeric for data analysis.
 
 
 ```{r}
 sapply(housing, class)
 ```
-Sapply was used to make sure that the factor variables were changed to numeric.
+We used `sapply()` to confirm that `elem` and `status` have been changed to numeric types.
+
 
 #Exploratory Data Analysis
+
+Below, we examined some of the variable's relationship with `price`. This information will be useful when building the model.
 
 ```{r}
 cor(housing)
 ```
 
-The cor() function was used to look at the corelation values for price, so that we can see which varibles will be significant in creating a model. Out of all the varibables garagesize, bedrooms, lot, size and status.
+The `cor()` function was used to look at the corelation values for `price` as they relate to the other variables so that we can see which varibles will be significant in creating a model. Out of all the varibables, `garagesize`, `bedrooms`, `lot`, `size`, and `status` seemed to be the most significant.
 
-```{r}
-ggplot(data = housing, aes(size, price, color = elem)) + geom_point() + geom_jitter()
+It should be noted that the highest correlation value for `price` is `garagesize` at 0.36. This mean all the other correlation values are below 0.36.
+
+## Visualzation
+
+```{r, echo = FALSE}
+ggplot(data = housingOld, aes(size, price, color = elem)) + geom_point() + geom_jitter() + theme_linedraw()
 ```
 
-```{r}
-ggplot(data = housing, aes(lot, price, color = elem)) + geom_point() + geom_jitter()
-```
-comment
+This graph does not show much linearity. All the points are clumped up near the middle.
 
-```{r}
-ggplot(data = housing, aes(garagesize, price, color = elem)) + geom_point() + geom_jitter()
-```
 
-```{r}
-ggplot(data = housing, aes(bedrooms, price, color = elem)) + geom_point() + geom_jitter()
+---
+
+```{r, echo = FALSE}
+ggplot(data = housingOld, aes(lot, price, color = elem)) + geom_point() + geom_jitter() + theme_linedraw()
 ```
 
-```{r}
-ggplot(data = housing, aes(status, price, color = elem)) + geom_point() + geom_jitter()
+Linearity is improved in this graph but the points are still clumped together, mostly on the left side of the graph.
+
+---
+
+```{r, echo = FALSE}
+ggplot(data = housingOld, aes(garagesize, price, color = elem)) + geom_point() + geom_jitter() + theme_linedraw()
 ```
-comment
+
+This graph shows us `garagesize` which had the highest correlation coeffication value. Linearity shows a slight improvement in this graph and less clumping.
+
+---
+
+```{r, echo = FALSE}
+ggplot(data = housingOld, aes(bedrooms, price, color = elem)) + geom_point() + geom_jitter() + theme_linedraw()
+```
+
+`bedrooms` was our only variable with a negative correlation coefficient value. This graph shows a better linear relationship than the first two, and about the same as the last graph.
+
+---
+
+```{r, echo = FALSE}
+
+ggplot(data = housing, aes(status, price, color = housingOld$elem)) + geom_point() + geom_jitter() + theme_linedraw()
+```
+
+`status` does not show a linear relationship. It is very spread out on the y-axis and gradually
+gets thinner.
+
+---
+
+**A note about `elem`**
+
+All the graphs show the `elem` variable using color. On most of the graphs, `edison` (blue) was usually closer to the top while `edge` (green) was usually found near the bottom.
+
+---
 
 #Intitial Modeling
+
+We built our first regresssion model using `price` and `garagesize`.
+
 
 ```{r}
 house_model = lm(price ~ garagesize, data = housing)
 summary(house_model)
 ```
 
-```{r}
+`garagesize` appears to be very significant with a p-value of 0.00148. Our r-squared value (0.1284) is very low.
+
+---
+
+```{r, echo = FALSE}
+par(mfrow = c(2,2))
 plot(house_model)
 ```
 
+
+---
+
+**Residuals vs fitted**
+
+This can detect nonlinearity (primarily) and non constant variation of errors. Curvature in the line is bad.
+
+Overall, this graph looks good. There is some slight curvature but it is mostly straight.
+
+---
+
+**Normal Q-Q**
+
+This can detect non-normality of the residuals. We want all the points to follow a straight line.
+
+This graph looks ok in the center but the points curve off at the beginning and end.
+
+---
+
+**Scale Location**
+
+We see a decreasing trend in the graph. This means we have unequal variance.
+
+---
+
+**Residuals vs leverage**
+
+This shows us the aamount of impact a point pontentially has on the fitted regression line. Due to the nature of the `garagesize` variable (values will be 0, 1, 2, or 3), this graph is very hard to read.
+
+---
+
 #Model Modification
+
+We added `size` and applied a power transformation to `bedrooms`.
+
 ```{r}
 house_model2 = lm(price ~ garagesize + size + bedrooms + I(bedrooms^2), data = housing)
 summary(house_model2)
 ```
 
-```{r}
+
+`bedroom` is not sigficant. With the new model, `garagesize` has become far less significant while `size` is significant with a p-value of 0.042. The r-squared value was raised slighlty to 0.2087 from 0.1284.
+
+---
+
+```{r, echo = FALSE}
+par(mfrow = c(2,2))
 plot(house_model2)
 ```
 
 
+---
+
+**Residuals vs fitted**
+
+This graph has gotten worse with the new changes. There is more curvature in the line.
+
+---
+
+**Normal Q-Q**
+
+This graph has improved. The curvature around the edges has been flattened and the line is traighter
+
+---
+
+**Scale Location**
+
+This line looks a little better. The line shows a slight increasing trend but is fairly straight.
+
+---
+
+**Residuals vs leverage**
+
+There are a few points that may have high influence (1, 4). There is one point with a very large amount of leverage.
+
+---
+
 #Conclusions
+
+Below is our multiple regresson model.
 
 $$price = 316.278 + 16.965 * garagesize + 67.340 * size - 86.280 * bedrooms  + 8.671 * bedrooms ^ 2$$
 
+In the previous section, we saw an improvement in some of the `plot()` graphs. The r-squared value was increased with our model modification; however, it was not as high as we would have liked it to be.
+
+```{r}
+confint(house_model2)
+```
+We used confint() command to look at all the confindence interval for the $\beta$ values in our model.
 
 
+##Mean 95% response interval
+```{r}
+mean_resp <- data.frame(garagesize = mean(housing$garagesize), size = mean(housing$size), bedrooms = mean(housing$bedrooms))
+mean_resp
+```
+
+```{r}
+p = predict(house_model2, mean_resp, interval = "confidence")
+p
+```
+The mean 95% confindence interval for the price of a house is between 265.9661 and 296.3167 hundred thousand dollars.
 
 
+##95% prediction
+```{r}
+newdata <- data.frame(garagesize = 4, size = 3.025, bedrooms = 4)
+```
 
+```{r}
+predict(house_model2, newdata, interval = "predict")
+```
 
-
-
-
-
+The 95% prediction interval of the price of a house with a garagesize of 4, lot size of 3.025, and a bedroom size of 4 is between 250.3211 and 512.603 hundred thousand dollars.
 
 
 
