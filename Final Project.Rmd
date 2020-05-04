@@ -7,24 +7,125 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(resampledata)
+library(knitr)
+library(dplyr)
+library(skimr)
+library(utils)
+library(pls)
+library(ISLR)
+library(readxl)
+library(MASS)
+library(boot)
+library(caret)
+library(glmnet)
+library(leaps)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+a. Consider the model that you arrived at in the previous project as the first candidate model.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+house_model2 = lm(price ~ garagesize + size + bedrooms + I(bedrooms^2), data = housing)
+summary(house_model2)
 ```
 
-## Including Plots
+b. Create a second candidate model by using regsubsets over the entire data set.  You can decide whether you prefer overall selection, forward selection, or backward selection, and you can decide which statistic you will use to determine the best model from the regsubsets process.  Just conduct a justifiable model selection process and report the predictors in your final model.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+fow_sel <- regsubsets(price ~ ., data = housing, nvmax = 14, method = "forward")
+regSum <- summary(fow_sel)
+regSum
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+regSum$rsq
+regSum$adjr2
+regSum$cp
+regSum$bic
+```
+
+
+```{r}
+which.max(regSum$rsq)
+which.max(regSum$adjr2)
+which.min(regSum$cp)
+which.min(regSum$bic)
+```
+
+
+```{r}
+coef(fow_sel,7)
+```
+
+
+```{r}
+model2 <- lm(price ~ id + size + bath + bedrooms + agestandardized + status + elem, data = housing)
+summary(model2)
+```
+
+c. Create a training/test split of the data by which roughly half of the 76 observations are training data and half are test data.
+
+```{r}
+set.seed(123)
+
+half <- sample(nrow(housing), nrow(housing) * 0.5, replace = FALSE)
+
+train <- housing[half, ]
+test <- housing[-half, ]
+```
+
+d. Now use regsubsets over only the training data to determine the number of predictors that should be in your final model.  Then use regsubsets over the entire data set with the determined number of variables to determine your third candidate model.
+
+```{r}
+test.mat <- model.matrix(price ~ ., data = test)
+```
+
+```{r}
+regfit.best <- regsubsets(price ~ ., data = train, nvmax = 11, method = "forward")
+```
+
+
+
+```{r}
+val.errors <- rep(NA, 11)
+```
+
+```{r}
+for (i in 1:9) 
+{
+  coefi=coef(regfit.best,id=i)
+  pred=test.mat[,names(coefi)]%*%coefi
+  val.errors[i] <- mean((test$price-pred)^2)
+}
+
+val.errors
+
+```
+
+```{r}
+which.min(val.errors)
+```
+
+```{r}
+regfit.best2 <- regsubsets(price ~ ., data = train, nvmax = 11, method = "forward")
+summary(regfit.best2)
+```
+
+The fifth model is the best model.
+
+```{r}
+model3 <- lm(price ~ size + lot + bedroom)
+```
+
+
+
+
+
+
+
+
+
+
+
