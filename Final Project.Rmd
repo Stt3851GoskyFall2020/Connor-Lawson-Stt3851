@@ -1,6 +1,6 @@
 ---
 title: "Final Project"
-author: "Connor Lawson"
+author: "Connor Lawson and Darrious Barger"
 date: "5/4/2020"
 output: html_document
 ---
@@ -24,20 +24,38 @@ library(leaps)
 ```
 
 
-a. Consider the model that you arrived at in the previous project as the first candidate model.
 
-```{r}
-house_model2 = lm(price ~ garagesize + size + bedrooms + I(bedrooms^2), data = housing)
-summary(house_model2)
+```{r, include = FALSE}
+housing <- read_excel("Housing.xlsx")
 ```
 
-b. Create a second candidate model by using regsubsets over the entire data set.  You can decide whether you prefer overall selection, forward selection, or backward selection, and you can decide which statistic you will use to determine the best model from the regsubsets process.  Just conduct a justifiable model selection process and report the predictors in your final model.
+
+# Model from the previous project
 
 ```{r}
-fow_sel <- regsubsets(price ~ ., data = housing, nvmax = 14, method = "forward")
+model1 = lm(price ~ garagesize + size + bedrooms + I(bedrooms^2), data = housing)
+summary(model1)
+```
+Our final model from the last project.
+
+
+# Using regsubsets on all the data
+
+
+```{r}
+housing$elem <- as.numeric(c("edison" = 0, "adams" = 1, "parker" = 2, "edge" = 3, "harris" = 4, "crest" = 5)[housing$elem])
+housing$status <- as.numeric(c("sld" = 0, "pen" = 1, "act" = 2)[housing$status])
+```
+
+We converted the elementry school districts to numeric, so that each individual district is not included as seperate predictor in regsubsets.
+
+```{r}
+fow_sel <- regsubsets(price ~ ., data = housing, nvmax = 11, method = "forward")
 regSum <- summary(fow_sel)
 regSum
 ```
+
+We decided to use foward selection to see which predictors would be the best for our model.
 
 ```{r}
 regSum$rsq
@@ -46,14 +64,13 @@ regSum$cp
 regSum$bic
 ```
 
-
 ```{r}
 which.max(regSum$rsq)
 which.max(regSum$adjr2)
 which.min(regSum$cp)
 which.min(regSum$bic)
 ```
-
+We used which.max and which.min to help us pick the best amount of predictors for our model. We decided to go with 7 predictors in our model, because both adjr2 and cp values have 7 predictors as optimal.
 
 ```{r}
 coef(fow_sel,7)
@@ -61,36 +78,43 @@ coef(fow_sel,7)
 
 
 ```{r}
-model2 <- lm(price ~ id + size + bath + bedrooms + agestandardized + status + elem, data = housing)
+model2 <- lm(price ~ size + lot + bath + bedrooms + garagesize + status + elem, data = housing)
 summary(model2)
 ```
 
-c. Create a training/test split of the data by which roughly half of the 76 observations are training data and half are test data.
+Created our second model with 7 predictors from our foward selection testing.
+
+# Creating training and test data
 
 ```{r}
 set.seed(123)
-
 half <- sample(nrow(housing), nrow(housing) * 0.5, replace = FALSE)
-
 train <- housing[half, ]
 test <- housing[-half, ]
 ```
 
-d. Now use regsubsets over only the training data to determine the number of predictors that should be in your final model.  Then use regsubsets over the entire data set with the determined number of variables to determine your third candidate model.
+Spilt our data in half to make the training and test data.
+
+# Using regsubsets on the training data
 
 ```{r}
 test.mat <- model.matrix(price ~ ., data = test)
 ```
 
+Created a design matrix by expanding factors to a set of dummy variables.
+
 ```{r}
 regfit.best <- regsubsets(price ~ ., data = train, nvmax = 11, method = "forward")
+summary(regfit.best)
 ```
 
-
+Used regsubsets on the training data to find the best model.
 
 ```{r}
 val.errors <- rep(NA, 11)
 ```
+
+Vector used to keep track of the validation errors for the model.
 
 ```{r}
 for (i in 1:9) 
@@ -99,27 +123,146 @@ for (i in 1:9)
   pred=test.mat[,names(coefi)]%*%coefi
   val.errors[i] <- mean((test$price-pred)^2)
 }
-
 val.errors
-
 ```
+
+For looop is used to calculate the MSE values for the different predictions from each of the models.
 
 ```{r}
 which.min(val.errors)
 ```
 
+Used which.min to find the model with the smallest validation error.
+
 ```{r}
-regfit.best2 <- regsubsets(price ~ ., data = train, nvmax = 11, method = "forward")
+regfit.best2 <- regsubsets(price ~ ., data = train, nvmax = 4, method = "forward")
 summary(regfit.best2)
 ```
 
-The fifth model is the best model.
+After running resubsets it was decided that a model using 5 predictors will be the best.
 
 ```{r}
-model3 <- lm(price ~ size + lot + bedroom)
+model3 <- lm(price ~ size + lot + bedrooms + elem + garagesize, data = housing )
+summary(model3)
+```
+Made model three with the decided amount of predictors from regsubsets. All values in this model seem to be significant.
+
+# Using Ridge Regression
+
+```{r}
+set.seed(123)
+x=model.matrix(price ~ ., data = train)[,-1]
+y=train$price
 ```
 
 
+Below, we are setting up the lamba values that we will test. We are also using the `glmnet()` function to fit the ridge regression.
+
+```{r}
+set.seed(123)
+grid=10^seq(10,-2,length=100)
+ridge.mod=glmnet(x,y,alpha=0,lambda=grid)
+```
+
+
+This finds the value of lambda at the 50th iteration of the sequence
+
+```{r}
+ridge.mod$lambda[50]
+```
+
+
+```{r}
+coef(ridge.mod)[,50]
+```
+
+
+This will calculate the sum of squared betas in the ridge regression model.
+
+```{r}
+sqrt(sum(coef(ridge.mod)[-1,50]^2))
+```
+
+
+The predict function will give us the ridge regression coefficients for lamba = 50.
+
+```{r}
+predict(ridge.mod,s=50,type="coefficients")
+```
+
+We use cross validation to find the best lamda.
+
+```{r}
+set.seed(1)
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
+
+ridge.mod=glmnet(x[train,],y[train],alpha=0,lambda=grid, thresh=1e-12)
+ridge.pred=predict(ridge.mod,s=4,newx=x[test,])
+```
+
+Created ridge.mod by using the best lambda value.
+
+# Partial Least Squares Regression
+
+```{r}
+set.seed(123)
+pls.fit=plsr(price ~ .,data = housing, subset = train, scale=TRUE, validation="CV")
+summary(pls.fit)
+```
+
+Fiiting the pls model using the training data and using cross validation to determine the number of components needed.
+
+
+```{r}
+validationplot(pls.fit,val.type="MSEP")
+```
+
+Looking at the graph, we will choose a 1 component model since the graph is growing larger and we would like to minimize the error.
+
+```{r}
+pls.pred = predict(pls.fit, newx = x[train,], ncomp = 1)
+pls.fit = plsr(price ~ ., data = housing,scale=TRUE,ncomp = 1)
+```
+
+
+# Calculate the MSE
+
+MSE For model 1
+
+```{r}
+mean((housing$price - predict(model1, housing))^2)
+```
+
+MSE for model 2
+
+```{r}
+mean((housing$price - predict(model2, housing))^2)
+```
+
+MSE for model 3
+
+
+```{r}
+mean((housing$price - predict(model3, housing))^2)
+```
+
+
+MSE for model 4
+
+```{r}
+mean((ridge.pred-y.test)^2)
+```
+
+
+MSE for model 5
+
+```{r}
+mean((pls.pred-y.test)^2)
+```
+
+After calculating all of the MSE values for the models, model 2 seems to be the most prefered model out if the group. This is due to it having the lowest MSE value of 2533.517.
 
 
 
